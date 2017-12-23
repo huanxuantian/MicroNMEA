@@ -1,7 +1,7 @@
 #ifndef MICRONMEA_H
 #define MICRONMEA_H
 
-#define MICRONMEA_VERSION "1.0.2"
+#define MICRONMEA_VERSION "1.0.4"
 #include <limits.h>
 
 /*
@@ -10,6 +10,20 @@
  */
 
 #include <Arduino.h>
+
+typedef struct __DateTime {
+	uint16_t _year;
+	uint8_t _month;
+	uint8_t _day;
+
+	uint8_t _hour;
+	uint8_t _minute;
+	uint8_t _second;
+	//
+	uint8_t _week;
+}DateTime;
+
+#define LOCAL_ZONE	8
 
 class MicroNMEA {
 public:
@@ -38,6 +52,8 @@ public:
   // User must decide and allocate the buffer
   MicroNMEA(void* buffer, uint8_t len);
 
+  MicroNMEA(void* buf, uint8_t len,int8_t timezone);
+  
   void setBuffer(void* buf, uint8_t len);
   
   // Clear all fix information. isValid() will return false, Year,
@@ -106,7 +122,25 @@ public:
   uint8_t getSecond(void) const {
     return _second;
   }
-  
+
+  uint8_t getWeek(void) const {
+	  return _week;
+  }
+
+  unsigned long getUtcSecont(void) const {
+	  return _utc;
+  }
+
+  void setTimeZone(int8_t localzone) {
+	  _zone = localzone;
+  }
+  int8_t getTimeZone(void) {
+	  return _zone;
+  }
+  DateTime getLocalTime(void)
+  {
+	  return _local_datetime;
+  }
   uint8_t getHundredths(void) const {
     return _hundredths;
   }
@@ -144,7 +178,26 @@ public:
     return (const char*)_messageID;
   }
 
-    
+  bool IsLeap(void);
+  long makeUTC(void);
+  DateTime makeDateTime(void);
+  bool IsLeap(uint16_t year);
+  DateTime makeDateTime(unsigned long utc);
+  DateTime makeDateTime(int8_t zone);
+  DateTime makeDateTime(unsigned long utc, int8_t zone);
+
+  DegLocation getLatdeg()
+  {
+	  _latdeg = builddeg((double)(_latitude / 1e6));
+	  return _latdeg;
+  }
+  DegLocation getLongdeg()
+  {
+	  _longdeg = builddeg((double)(_longitude) / 1e6);
+	  return _longdeg;
+  }
+  DegLocation builddeg(double deg);
+
 protected:
   static inline bool isEndOfFields(char c) {
     return c == '*' || c == '\0' || c == '\r' || c == '\n';
@@ -175,8 +228,16 @@ private:
   long _altitude; // In millimetres
   bool _altitudeValid;
   long _speed, _course;
+
+
+  unsigned long _utc;
+  int8_t _zone;
+  DateTime _local_datetime;
+  DegLocation _latdeg;
+  DegLocation _longdeg;
+
   uint16_t _year;
-  uint8_t _month, _day, _hour, _minute, _second, _hundredths;
+  uint8_t _month, _day, _hour, _minute, _second, _hundredths,_week;
   uint8_t _numSat;
   uint8_t _hdop;
 

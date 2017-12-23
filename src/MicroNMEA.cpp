@@ -178,16 +178,23 @@ MicroNMEA::MicroNMEA(void) :
   setBuffer(NULL, 0);
   clear();
 }
-
-
 MicroNMEA::MicroNMEA(void* buf, uint8_t len) :
   _badChecksumHandler(NULL),
   _unknownSentenceHandler(NULL)
 {
   setBuffer(buf, len);
+  _zone = LOCAL_ZONE;
   clear();
 }
 
+MicroNMEA::MicroNMEA(void* buf, uint8_t len,int8_t timezone) :
+  _badChecksumHandler(NULL),
+  _unknownSentenceHandler(NULL)
+{
+  setBuffer(buf, len);
+  _zone = timezone;
+  clear();
+}
 
 void MicroNMEA::setBuffer(void* buf, uint8_t len)
 {
@@ -212,10 +219,9 @@ void MicroNMEA::clear(void)
   _altitude = _speed = _course = LONG_MIN;
   _altitudeValid = false;
   _year = _month = _day = 0;
-  _hour = _minute = _second = 99;
+  _hour = _minute = _second = 0;
   _hundredths = 0;
-}
-
+  }
 
 bool MicroNMEA::process(char c)
 {
@@ -255,12 +261,19 @@ bool MicroNMEA::process(char c)
   else {
     *_ptr = c;
     if (_ptr < &_buffer[_bufferLen - 1])
+    {
       ++_ptr;
+    }
+    else if(_ptr==&_buffer[_bufferLen - 1])
+    {
+      
+    	_ptr = _buffer;
+    	_buffer[_bufferLen - 1] = '\0';
+    }
   }
   
   return false;
 }
-
 
 const char* MicroNMEA::parseTime(const char* s)
 {
@@ -271,7 +284,6 @@ const char* MicroNMEA::parseTime(const char* s)
   return skipField(s + 9);   
 }
 
-
 const char* MicroNMEA::parseDate(const char* s)
 {
   _day = parseUnsignedInt(s, 2);
@@ -280,6 +292,194 @@ const char* MicroNMEA::parseDate(const char* s)
   return skipField(s + 6);
 }
 
+bool MicroNMEA::IsLeap(void)
+{
+	if ((_year % 400 == 0) || ((_year % 4 == 0) && (_year % 100 != 0)))
+	{
+		return true;
+	}
+	return false;
+}
+bool MicroNMEA::IsLeap(uint16_t year)
+{
+	if ((year % 400 == 0) || ((year % 4 == 0) && (year % 100 != 0)))
+	{
+		return true;
+	}
+	return false;
+}
+long MicroNMEA::makeUTC(void)
+{
+	//----------------dayofMonth_normal----->01-02-03-04-05-06-07-08-09-10-11-12<-
+	static const char dayofMonth_normal[] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
+	//----------------dayofMonth_leap----->01-02-03-04-05-06-07-08-09-10-11-12<-
+	static const char dayofMonth_leap[] = { 31,29,31,30,31,30,31,31,30,31,30,31 };
+	unsigned long utc_temp = 0;
+	int i = 0;
+	int RunYearNum = 0;
+	int day = 0;//day of year
+	const char* day_month = NULL;
+	for (i = 1970;i < _year; i++)
+	{
+		if (IsLeap(i))
+		{
+			RunYearNum++;
+		}
+	}
+	
+
+	utc_temp = RunYearNum * 366 * 24 * 60 * 60;
+	utc_temp += (_year - 1970 - RunYearNum) * 365 * 24 * 60 * 60;
+
+	if (IsLeap())
+	{
+		day_month = dayofMonth_leap;
+	}
+	else
+	{
+		day_month = dayofMonth_normal;
+	}
+
+	for (i = 1; i < _month; i++)
+	{
+		day+=day_month[i - 1];
+	}
+	utc_temp += day * 24 * 60 * 60;
+
+	/* day */
+	utc_temp += (_day - 1) * 24 * 60 * 60;
+
+	/* hour */
+	utc_temp += (_hour) * 60 * 60;
+
+	/* min */
+	utc_temp += (_minute) * 60;
+
+	/* sec */
+	utc_temp += _second;
+
+	_week = (((unsigned long)utc_temp / (24 * 60 * 60))+4) % 7;
+
+	return utc_temp;
+}
+
+DateTime MicroNMEA::makeDateTime(void)
+{
+	return makeDateTime(_utc,_zone);
+}
+
+DateTime MicroNMEA::makeDateTime(int8_t zone)
+{
+	return makeDateTime(_utc, zone);
+}
+
+DateTime MicroNMEA::makeDateTime(unsigned long utc)
+{
+	return makeDateTime(utc,_zone);
+}
+
+DateTime MicroNMEA::makeDateTime(unsigned long utc, int8_t zone)
+{
+	DateTime _datetime;
+	uint16_t years = 0;
+	unsigned long local_time_t = utc + (zone * 3600);
+	uint32_t secs = 0;
+	uint32_t mins = 0;
+	uint32_t hours = 0;
+	uint32_t days = 0;
+	uint32_t months =0;
+	bool leap = false;
+	//----------------dayofMonth_normal----->01-02-03-04-05-06-07-08-09-10-11-12<-
+	static const char dayofMonth_normal[] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
+	//----------------dayofMonth_leap----->01-02-03-04-05-06-07-08-09-10-11-12<-
+	static const char dayofMonth_leap[] = { 31,29,31,30,31,30,31,31,30,31,30,31 };
+	const char* dayofmonth = NULL;
+
+	secs = local_time_t % 60;
+	mins = local_time_t / 60;
+	hours = (mins / 60);
+	days = (hours / 24);
+
+	_datetime._second = (uint8_t)secs;
+	_datetime._minute = (uint8_t)(mins % 60);
+	_datetime._hour = (uint8_t)(hours % 24);
+
+	if (_datetime._hour || _datetime._minute || _datetime._second)
+	{
+		_datetime._week = (days + 1 +3) % 7;
+	}
+	else
+	{
+		_datetime._week = (days +3) % 7;
+	}
+
+	years = 1970;
+
+	while (1)
+	{
+		leap = IsLeap(years);
+
+		if (days < (leap ? 366 : 365))
+		{
+			break;
+		}
+
+		days -= (leap ? 366 : 365);
+		years++;
+	}
+
+	_datetime._year = years;
+
+	if (IsLeap(years))
+	{
+		dayofmonth = dayofMonth_leap;
+	}
+	else
+	{
+		dayofmonth = dayofMonth_normal;
+	}
+
+	for (months = 0; months < 12; months++)
+	{
+		if (days < (uint32_t)dayofmonth[months])
+		{
+			break;
+		}
+		days -= dayofmonth[months];
+	}
+
+	_datetime._day = days + 1;
+	_datetime._month = months + 1;
+
+	return _datetime;
+}
+
+DegLocation MicroNMEA::builddeg(double deg)
+{
+	DegLocation deg_pack;
+	double temp_data = 0;
+	double temp_data1 = 0;
+	double temp_data2 = 0;
+	double temp_data3 = 0;
+	deg_pack._deg = (int16_t)deg;
+
+	temp_data = (double)((deg - (double)deg_pack._deg)*60.0);
+	deg_pack._mins = (uint8_t)(temp_data) % 60;
+	temp_data1 = temp_data;
+
+	temp_data = ((temp_data - (double)deg_pack._mins)*60.0);
+	temp_data2 = temp_data;
+
+	deg_pack._sec = (uint8_t)(temp_data) % 60;
+
+	temp_data = ((temp_data - (double)deg_pack._sec)*1000.0);
+	temp_data3 = temp_data;
+
+	deg_pack._millsec = (uint16_t)temp_data;
+
+	return deg_pack;
+
+}
 
 bool MicroNMEA::processGGA(const char *s)
 {
@@ -298,6 +498,7 @@ bool MicroNMEA::processGGA(const char *s)
       _latitude *= -1; 
     s += 2; // Skip N/S and comma
   }
+  
   _longitude = parseDegreeMinute(s, 3, &s);
   if (*s == ',')
     ++s;
@@ -346,7 +547,8 @@ bool MicroNMEA::processRMC(const char* s)
   _speed = parseFloat(s, 3, &s);
   _course = parseFloat(s, 3, &s);
   s = parseDate(s);
+  _utc = makeUTC();
+  _local_datetime = makeDateTime();
   // That's all we care about
   return true;
 }
-

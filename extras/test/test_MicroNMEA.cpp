@@ -39,6 +39,20 @@ ostream& formatDateTime(ostream& s, MicroNMEA& nmea)
   return s;
 }
 
+ostream& formatLocalDateTime(ostream& s, MicroNMEA& nmea)
+{
+	s << setfill('0')
+		<< setw(4) << nmea.getLocalTime()._year << '-'
+		<< setw(2) << int(nmea.getLocalTime()._month) << '-'
+		<< setw(2) << int(nmea.getLocalTime()._day) << ' '
+		<< setw(2) << int(nmea.getLocalTime()._hour) << ':'
+		<< setw(2) << int(nmea.getLocalTime()._minute) << ':'
+		<< setw(2) << int(nmea.getLocalTime()._second) << 'Z'
+		<< setw(2) << int(nmea.getTimeZone()) <<'W'
+		<< setw(2) << int(nmea.getLocalTime()._week);
+	return s;
+}
+
 int main(void)
 {
   char buffer[85];
@@ -61,6 +75,10 @@ int main(void)
 
 	cout << "Date/time    ";
 	formatDateTime(cout, nmea);
+	cout << endl;
+	
+	cout << "Local Time   ";
+	formatLocalDateTime(cout, nmea);
 	cout << endl;
 	
 	cout << fixed << setprecision(6)

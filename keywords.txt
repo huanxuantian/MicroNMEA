@@ -6,7 +6,7 @@
 # Datatypes (KEYWORD1)
 #######################################
 MicroNMEA		KEYWORD1
-
+DateTime		KEYWORD1
 #######################################
 # Methods and Functions (KEYWORD2)
 #######################################
@@ -42,7 +42,13 @@ setUnknownSentenceHandler	KEYWORD2
 getSentence			KEYWORD2
 getTalkerID			KEYWORD2
 getMessageID			KEYWORD2
-
+getWeek				KEYWORD2
+getUtcSecont			KEYWORD2
+setTimeZone			KEYWORD2
+getTimeZone			KEYWORD2
+getLocalTime			KEYWORD2
+makeDateTime			KEYWORD2
+IsLeap				KEYWORD2
 #######################################
 # Constants (LITERAL1)
 #######################################
