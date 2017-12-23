@@ -23,6 +23,14 @@ typedef struct __DateTime {
 	uint8_t _week;
 }DateTime;
 
+typedef struct __DegLocation {
+	int16_t _deg = 0;//0-180 for longitude  0-90 for latitude
+	uint8_t _mins = 0;//0-60
+	uint8_t _sec = 0;//0-60
+	uint16_t _millsec = 0;//0-999
+}DegLocation;
+
+
 #define LOCAL_ZONE	8
 
 class MicroNMEA {
@@ -179,7 +187,7 @@ public:
   }
 
   bool IsLeap(void);
-  long makeUTC(void);
+  unsigned long makeUTC(void);
   DateTime makeDateTime(void);
   bool IsLeap(uint16_t year);
   DateTime makeDateTime(unsigned long utc);

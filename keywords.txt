@@ -7,6 +7,7 @@
 #######################################
 MicroNMEA		KEYWORD1
 DateTime		KEYWORD1
+DegLocation		KEYWORD1
 #######################################
 # Methods and Functions (KEYWORD2)
 #######################################
@@ -49,6 +50,9 @@ getTimeZone			KEYWORD2
 getLocalTime			KEYWORD2
 makeDateTime			KEYWORD2
 IsLeap				KEYWORD2
+getLatdeg				KEYWORD2
+getLongdeg				KEYWORD2
+builddeg				KEYWORD2
 #######################################
 # Constants (LITERAL1)
 #######################################

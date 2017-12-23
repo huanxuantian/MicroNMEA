@@ -294,11 +294,7 @@ const char* MicroNMEA::parseDate(const char* s)
 
 bool MicroNMEA::IsLeap(void)
 {
-	if ((_year % 400 == 0) || ((_year % 4 == 0) && (_year % 100 != 0)))
-	{
-		return true;
-	}
-	return false;
+	return IsLeap(_year);
 }
 bool MicroNMEA::IsLeap(uint16_t year)
 {
@@ -308,7 +304,7 @@ bool MicroNMEA::IsLeap(uint16_t year)
 	}
 	return false;
 }
-long MicroNMEA::makeUTC(void)
+unsigned long MicroNMEA::makeUTC(void)
 {
 	//----------------dayofMonth_normal----->01-02-03-04-05-06-07-08-09-10-11-12<-
 	static const char dayofMonth_normal[] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
